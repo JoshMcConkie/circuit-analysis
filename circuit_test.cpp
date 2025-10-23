@@ -8,8 +8,14 @@ Node v2;
 Node v3;
 Node vg;
 
-v1.to(v2).R = 1000;
+v1.short(v2).R = 1000;
 v1.connect(vg,R=10);
 
 
 vector<Node> nodes {}
+
+/*
+short/wire
+
+
+*/

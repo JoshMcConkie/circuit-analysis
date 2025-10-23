@@ -2,9 +2,9 @@
 #include <vector>
 #include <memory> // smart pointers for Circuit
 #include <map>
-class Node {
-   
-    public:
+
+class Node {  
+public:
     double voltage = 0.0;
     std::vector<Component*> connections;
     int id = -1;
@@ -19,7 +19,6 @@ class Component {
 public:
     Node* nodeA;
     Node* nodeB;
-    double ohms = 0;
     virtual double getCurrent() = 0;
 };
 
@@ -113,14 +112,14 @@ public:
 
         for (const auto& comp_ptr : allComponents) {
             // Try to cast the component to a CurrentSource
-            CurrentSource* cs = dynamic_cast<CurrentSource*>(comp_ptr.get());
+            CurrentSource* cs_ptr = dynamic_cast<CurrentSource*>(comp_ptr.get());
 
             
             
-            if (cs != nullptr) {
+            if (cs_ptr != nullptr) {
                 // add the source to the force vector on the proper node row
-                unsigned int nodeAId = cs->nodeA->id;
-                unsigned int nodeBId = cs->nodeB->id;
+                unsigned int nodeAId = cs_ptr->nodeA->id;
+                unsigned int nodeBId = cs_ptr->nodeB->id;
                 if ((nodeAId != (groundNode->id))) currents[idToWeightIdx[nodeAId]] -= (*comp_ptr).getCurrent();
                 if ((nodeBId != (groundNode->id))) currents[idToWeightIdx[nodeBId]] += (*comp_ptr).getCurrent();
     
