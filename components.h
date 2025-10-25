@@ -41,13 +41,22 @@ public:
 
 class CurrentSource : public Component {
 public:
-    double current = 0;
+    double supply = 0;
     double getCurrent() override{
-        return current;
+        return supply;
     }
-    CurrentSource(Node *nA, Node *nB, double I) : Component(nA,nB), current(I) {}
+    CurrentSource(Node *nA, Node *nB, double I) : Component(nA,nB), supply(I) {}
 };
 
+class VoltageSource : public Component {
+public:
+    double supply = 0;
+    double current = 0;
+    double getCurrent() override{
+        return 0;
+    }
+    VoltageSource(Node *nA, Node *nB, double V) : Component(nA,nB), supply(V) {}
+};
 // class VoltageSource : public Component {
 // public:
 //     double current = 0;
@@ -145,8 +154,6 @@ public:
         for (const auto& comp_ptr : allComponents) {
             // Try to cast the component to a CurrentSource
             CurrentSource* cs_ptr = dynamic_cast<CurrentSource*>(comp_ptr.get());
-
-            
             
             if (cs_ptr != nullptr) {
                 // add the source to the force vector on the proper node row
@@ -155,7 +162,16 @@ public:
                 if ((nodeAId != (groundNode->id))) currents[idToWeightIdx[nodeAId]] -= (*comp_ptr).getCurrent();
                 if ((nodeBId != (groundNode->id))) currents[idToWeightIdx[nodeBId]] += (*comp_ptr).getCurrent();
     
-            }
+            } /* else {
+                VoltageSource* vs_ptr = dynamic_cast<VoltageSource*>(comp_ptr.get());
+                if (vs_ptr != nullptr) {
+                    // add the source to the force vector on the proper node row
+                    unsigned int nodeAId = vs_ptr->nodeA->id;
+                    unsigned int nodeBId = vs_ptr->nodeB->id;
+                    if ((nodeAId != (groundNode->id))) currents[idToWeightIdx[nodeAId]] -= (*comp_ptr).getCurrent();
+                    if ((nodeBId != (groundNode->id))) currents[idToWeightIdx[nodeBId]] += (*comp_ptr).getCurrent();
+                } 
+            } */
         }
     }
 };
