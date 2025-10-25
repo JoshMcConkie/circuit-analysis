@@ -2,24 +2,32 @@
 #include <vector>
 #include <memory> // smart pointers for Circuit
 #include <map>
+#include <concepts>
+#include <utility>
+
+class Component;
 
 class Node {  
 public:
     double voltage = 0.0;
     std::vector<Component*> connections;
-    int id = -1;
+    int id;
+    Node(int d) : id(d) {}
 
-    // std::vector<Node> getConnections() {
-
-    //     for (const auto& comp_ptr : connections)
+    // void to(Node *nodeB, Component-type) {
+    //     Component connection(this,nodeB);
     // }
 };
+
 
 class Component {
 public:
     Node* nodeA;
     Node* nodeB;
+    virtual ~Component() = default;
     virtual double getCurrent() = 0;
+
+    Component(Node *nA, Node *nB) : nodeA(nA), nodeB(nB) {}
 };
 
 class Resistor: public Component {
@@ -28,8 +36,7 @@ public:
     double getCurrent() override{
         return (nodeA->voltage - nodeB->voltage) / resistance;
     };
-
-
+    Resistor(Node *nA, Node *nB, double R) : Component(nA,nB), resistance(R) {}
 };
 
 class CurrentSource : public Component {
@@ -38,6 +45,7 @@ public:
     double getCurrent() override{
         return current;
     }
+    CurrentSource(Node *nA, Node *nB, double I) : Component(nA,nB), current(I) {}
 };
 
 // class VoltageSource : public Component {
@@ -47,12 +55,36 @@ public:
 //         return current;
 //     }
 // };
+template <class T>
+concept DerivedComponent = std::derived_from<T, Component>;
 
 class Circuit {
+    template <DerivedComponent T, class... Args>
+    std::unique_ptr<Component> make_component(Args&&... args) {
+        return std::make_unique<T>(std::forward<Args>(args)...);
+    }
+    
 public:
     std::vector<std::unique_ptr<Node>> allNodes;
     std::vector<std::unique_ptr<Component>> allComponents;
-    const Node* groundNode;
+    Node* groundNode = nullptr;
+
+    Circuit(Node* gN) : groundNode(gN) {}
+
+    Node* addNode(int id) {
+        allNodes.push_back(std::make_unique<Node>(id));
+        return allNodes.back().get();
+    }
+
+    template <DerivedComponent T, class... Args>
+    void connect(Node *a, Node *b, Args&&...args) {
+        auto unique_p = make_component<T>(a,b, std::forward<Args>(args)...);
+        Component *raw_p = unique_p.get();
+        allComponents.push_back(std::move(unique_p)); 
+        a->connections.push_back(raw_p);
+        b->connections.push_back(raw_p);
+               
+    }
 
     void solveKCL() {
         // n is number of non-ground nodes. prep for nxn coefficient matrix
@@ -125,10 +157,5 @@ public:
     
             }
         }
-        
-    
     }
-
-
-
 };
