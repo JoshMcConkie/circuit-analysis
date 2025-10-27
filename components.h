@@ -13,10 +13,6 @@ public:
     std::vector<Component*> connections;
     int id;
     Node(int d) : id(d) {}
-
-    // void to(Node *nodeB, Component-type) {
-    //     Component connection(this,nodeB);
-    // }
 };
 
 
@@ -57,13 +53,7 @@ public:
     }
     VoltageSource(Node *nA, Node *nB, double V) : Component(nA,nB), supply(V) {}
 };
-// class VoltageSource : public Component {
-// public:
-//     double current = 0;
-//     double getCurrent() override{
-//         return current;
-//     }
-// };
+
 template <class T>
 concept DerivedComponent = std::derived_from<T, Component>;
 
@@ -101,11 +91,11 @@ public:
 
         size_t n = (countNodes >0) ? static_cast<size_t>(countNodes - 1) : 0;
 
-        // std::vector<double> voltages;
+        std::vector<double> unknowns;
         std::vector<double> currents(n,0); // for all but the ground node
         std::vector<std::vector<double>> weights(n,std::vector<double>(n,0.0));
 
-
+        // get valid indicdes for conductance matrix
         unsigned int matrix_index = 0;
         std::map<unsigned int,unsigned int> idToWeightIdx;
         for (const auto&  node_ptr : allNodes) {
@@ -151,9 +141,32 @@ public:
             }
         }
 
+        auto addVoltageSourceConstraint = [&](int aId, int bId, double V){
+            const int groundId = groundNode->id;
+            
+            std::vector<double> new_col(weights.size(),0.0);
+            
+            if ((aId != (groundId))) new_col[idToWeightIdx[aId]] = -1.0;
+            if ((bId != (groundId))) new_col[idToWeightIdx[bId]] = 1.0;
+
+            for (size_t i = 0; i < weights.size(); i++) {
+                weights[i].push_back(new_col[i]);
+            }
+
+            std::vector new_row(weights[0].size(), 0.0);
+            if ((aId != (groundId))) new_row[idToWeightIdx[aId]] = -1.0;
+            if ((bId != (groundId))) new_row[idToWeightIdx[bId]] = 1.0;
+            
+            weights.push_back(std::move(new_row));
+
+            currents.push_back(V);
+        };
+
+    
         for (const auto& comp_ptr : allComponents) {
             // Try to cast the component to a CurrentSource
             CurrentSource* cs_ptr = dynamic_cast<CurrentSource*>(comp_ptr.get());
+            
             
             if (cs_ptr != nullptr) {
                 // add the source to the force vector on the proper node row
@@ -162,16 +175,13 @@ public:
                 if ((nodeAId != (groundNode->id))) currents[idToWeightIdx[nodeAId]] -= (*comp_ptr).getCurrent();
                 if ((nodeBId != (groundNode->id))) currents[idToWeightIdx[nodeBId]] += (*comp_ptr).getCurrent();
     
-            } /* else {
+            } else {
                 VoltageSource* vs_ptr = dynamic_cast<VoltageSource*>(comp_ptr.get());
-                if (vs_ptr != nullptr) {
-                    // add the source to the force vector on the proper node row
-                    unsigned int nodeAId = vs_ptr->nodeA->id;
-                    unsigned int nodeBId = vs_ptr->nodeB->id;
-                    if ((nodeAId != (groundNode->id))) currents[idToWeightIdx[nodeAId]] -= (*comp_ptr).getCurrent();
-                    if ((nodeBId != (groundNode->id))) currents[idToWeightIdx[nodeBId]] += (*comp_ptr).getCurrent();
+                if (auto* vs = dynamic_cast<VoltageSource*>(comp_ptr.get())) {
+                    // this assumes supply is from nodeA(-) to nodeB(+)
+                    addVoltageSourceConstraint(vs->nodeA->id,vs->nodeB->id,vs->supply);
                 } 
-            } */
+            } 
         }
     }
 };
