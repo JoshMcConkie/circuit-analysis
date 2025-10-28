@@ -4,6 +4,7 @@
 #include <map>
 #include <concepts>
 #include <utility>
+#include <Eigen/Dense>
 
 class Component;
 
@@ -85,7 +86,7 @@ public:
                
     }
 
-    void solveKCL() {
+    Eigen::VectorXd solveKCL() {
         // n is number of non-ground nodes. prep for nxn coefficient matrix
         size_t countNodes = allNodes.size();
 
@@ -153,7 +154,7 @@ public:
                 weights[i].push_back(new_col[i]);
             }
 
-            std::vector new_row(weights[0].size(), 0.0);
+            std::vector<double> new_row(weights[0].size(), 0.0);
             if ((aId != (groundId))) new_row[idToWeightIdx[aId]] = -1.0;
             if ((bId != (groundId))) new_row[idToWeightIdx[bId]] = 1.0;
             
@@ -183,5 +184,24 @@ public:
                 } 
             } 
         }
+    
+    Eigen::MatrixXd A(weights.size(), weights[0].size());
+    for (size_t i = 0; i < weights.size(); ++i) {
+        for (size_t j = 0; j < weights[0].size(); ++j) {
+            A(i,j) = weights[i][j];
+        }
     }
+
+    Eigen::VectorXd b(currents.size());
+    for (size_t i = 0; i < currents.size(); ++i) {
+        b(i) = currents[i];
+    }
+    // Solve (robust for small/medium problems)
+    Eigen::VectorXd x = A.fullPivLu().solve(b);
+    // or: A.colPivHouseholderQr().solve(b);
+    Eigen::VectorXd V  = x.head(n);   // node voltages (your ordering)
+    Eigen::VectorXd Iv = x.tail(x.size() - n); // currents through voltage sources
+    
+    return V;
+}
 };
