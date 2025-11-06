@@ -56,7 +56,7 @@ public:
 };
 
 template <class T>
-concept DerivedComponent = std::derived_from<T, Component>;
+concept DerivedComponent = std::derived_from<T, Component>; // only in c++20!!
 
 class Circuit {
     template <DerivedComponent T, class... Args>
@@ -199,7 +199,7 @@ public:
     // Solve (robust for small/medium problems)
     Eigen::VectorXd x = A.fullPivLu().solve(b);
     // or: A.colPivHouseholderQr().solve(b);
-    Eigen::VectorXd V  = x.head(n);   // node voltages (your ordering)
+    Eigen::VectorXd V  = x.head(n);   // node voltages (same ordering)
     Eigen::VectorXd Iv = x.tail(x.size() - n); // currents through voltage sources
     
     return V;
